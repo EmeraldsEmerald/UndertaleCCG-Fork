@@ -77,6 +77,7 @@ const App = new Vue({
 				return targetedAvatarFrame
 			}
 		},
+		//test githb change
 		calcHandX: function (i) {
 			if (i == this.heldCard) {
 				return (this.heldCardOrigX + this.mouseX - this.heldCardOrigMouseX) + "px"
