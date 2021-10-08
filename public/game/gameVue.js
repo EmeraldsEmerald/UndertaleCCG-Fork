@@ -63,7 +63,8 @@ const App = new Vue({
 			ally: false,
 			slotNum: -1
 		},
-		temporaryDisplayingCard:null,
+		temporaryDisplayingCard: null,
+		chooseCards:[]
 	},
 	methods: {
 		getAvatarFrameSprite: function (state) {
@@ -269,6 +270,10 @@ const App = new Vue({
 				this.allyAvatarFrameState = "targetable"
 			}
 		},
+		showChoose: function (chooseCards) {
+			this.deHighlightCards()
+			this.chooseCards = chooseCards
+		},
 		highlightTargetsVisual: function (targets) {
 			this.deHighlightCards()
 			for (let i = 0; i < this.enemySlots.length; i++) {
@@ -319,6 +324,9 @@ const App = new Vue({
 		},
 		leaveGame: function () {
 			window.location.assign("/play.html")
+		},
+		cardChosen: function (position) {
+			sendThroughWebSocket(JSON.stringify({ type: 'chosenCard', chosen:  position}))
         }
 	},
 	computed: {

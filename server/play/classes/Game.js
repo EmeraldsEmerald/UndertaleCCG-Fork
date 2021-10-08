@@ -22,7 +22,7 @@ class Game {
             (data) => { return true },
             this.listenerEmitter
         )*/
-        this.listenerEmitter.emitPassiveEvent({}, "triggerGameStartEffects");
+        this.listenerEmitter.emitPassiveEvent({}, "triggerGameStartEvents");
     }
     get stackClosed() {
         return this._stackClosed
@@ -30,6 +30,11 @@ class Game {
     set stackClosed(value) {
         this._stackClosed = value
         if (value == false) {
+            if (this.started) {
+                this.players[0].addAnimation("fake", {})
+                this.players[1].addAnimation("fake", {})
+                this.checkCardsForUpdates()
+            }
             this.evalNextStackEntry()
         }
     }

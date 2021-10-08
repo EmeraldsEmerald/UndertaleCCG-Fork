@@ -198,6 +198,24 @@ function handleNextAnimation(animations, cardData) {
         case "showTargeted":
             App.highlightTargetsVisual(data.targets)
             break
+        case "getChoose":
+            for (let i = 0; i < data.chooseCards.length; i++) {
+                if (data.chooseCards[i].type == "fake") {
+                    let saveName = data.chooseCards[i].card
+                    data.chooseCards[i].card = App.getCardData(data.chooseCards[i].card)
+                    data.chooseCards[i].card.cardFrameState = 'highlighted'
+                    data.chooseCards[i].card.name = saveName
+                    data.chooseCards[i].card.chooseValue = i
+                } else if (data.chooseCards[i].type == "real") {
+                    data.chooseCards[i].card.cardFrameState = 'highlighted'
+                    data.chooseCards[i].card.chooseValue = i
+                }
+            }
+            App.showChoose(data.chooseCards)
+            break
+        case "clearChooseCardSelection":
+            App.chooseCards = []
+            break
         //winning or losing
         case "lose":
             App.gameEnded = true
@@ -243,7 +261,7 @@ function handleNextAnimation(animations, cardData) {
     } else if (cardData != undefined) {
         App.updateCardData(cardData)
     }
-    if (animations.length == 0&&!App.selectingTarget) {
+    if (animations.length == 0&&!App.selectingTarget&&!App.chooseCards.length>0) {
         App.highlightCards()
     }
 }

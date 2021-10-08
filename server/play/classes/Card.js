@@ -167,7 +167,7 @@ class Card {
         this.player.addDualAnimation("wait", {}, 400)
 
         this.player.addDualAnimation("hideAttackOverlay", {}, 0)
-        this.player.addDualAnimation("hideAvatarAttacked", {ally: false}, 0)
+        this.player.addDualAnimation("hideAvatarAttacked", { ally: false }, 0)
         target.takeDamage(this, this.outgoingAttack)
         this.attacking = false
         this.hasAttacked = true
@@ -323,7 +323,7 @@ class Card {
         let toReturn = {}
         try {
             toReturn = JSON.parse(JSON.stringify(this))
-        }catch(e){
+        } catch (e) {
             console.log(this)
             console.log(e)
         }
@@ -351,6 +351,17 @@ class Card {
             value[1].removeListener(value[0])
         }
         this.listenerReceiver.eventHandlers = {}
+    }
+    getRandomCards (amount, requirements)  {
+        let entries = Object.entries(cardList)
+        let possibilities = []
+        for (let i = 0; i < entries.length; i++) {
+            if (requirements(entries[i][1])) {
+                possibilities.push(entries[i][0])
+            }
+        }
+        util.shuffle(possibilities)
+        return possibilities.slice(0, amount)
     }
 }
 module.exports = { Card }

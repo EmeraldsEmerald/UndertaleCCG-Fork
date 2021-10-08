@@ -17,6 +17,12 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <ItemGroup>
     <Content Include="howToRun.txt" />
+    <Content Include="public\css\card.css">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="public\decks\cardComponentDeck.js">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="rules.txt" />
     <Content Include="server\play\classes\Listener.js">
       <SubType>Code</SubType>
@@ -30,7 +36,6 @@
     <Content Include="public\404.html" />
     <Content Include="public\decks.html" />
     <Content Include="public\gameVue.html" />
-    <Content Include="public\game.html" />
     <Content Include="public\index.html" />
     <Content Include="public\login.html" />
     <Content Include="public\play.html" />
@@ -45,13 +50,9 @@
     <Content Include="public\css\play.css" />
     <Content Include="public\decks\decks.js" />
     <Content Include="public\decks\websocketDeck.js" />
-    <Content Include="public\game\animations.js" />
     <Content Include="public\game\animationsVue.js" />
-    <Content Include="public\game\game.js" />
     <Content Include="public\game\gameVue.js" />
-    <Content Include="public\game\gameWebsocket.js" />
     <Content Include="public\game\gameWebsocketVue.js" />
-    <Content Include="public\game\pixi.min.js" />
     <Content Include="public\game\spriteList.js" />
     <Content Include="public\images\AttackOverlay.png" />
     <Content Include="public\images\AvatarFrame.png" />

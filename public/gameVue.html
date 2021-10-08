@@ -8,8 +8,8 @@
     <script defer src="game/animationsVue.js"></script>
     <script src="outsourced/Vue.js"></script>
     <script src="game/cardComponentGame.js"></script>
-    <script src="game/pixi.min.js"></script>
     <link rel="stylesheet" href="css/game.css">
+    <link rel="stylesheet" href="css/card.css">
     <link rel="stylesheet" href="css/global.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
         <div id="gamearea" class="gamearea" v-if="gameEnded" style="text-align:center; font-size:50px;color:white;">
             <br /><br /><br />
             {{won?"You win":"You lose"}}<br /><br />
-            <button style="font-size:50px;" v-on:click ="leaveGame()">
+            <button style="font-size:50px;" v-on:click="leaveGame()">
                 Return home.
             </button>
         </div>
@@ -144,8 +144,7 @@
                       v-on:set-overlay-text='setOverlayText'></card>
             </div>
             <div v-if="temporaryDisplayingCard!=null">
-                <card 
-                      :style='{position:"absolute",left:"648px",top:"150px"}'
+                <card :style='{position:"absolute",left:"648px",top:"150px"}'
                       :card='temporaryDisplayingCard'
                       :opacity='1'
                       :get-card-data='getCardData'
@@ -161,6 +160,22 @@
         </div>
         <div id="overlay" v-if="overlayText!=''">
             <div class="overlayTextBox">{{overlayText}}<br><button v-on:click='overlayText=""'>Close box</button></div>
+        </div>
+        <div id="overlay" v-if="chooseCards.length>0">
+            <div class="chooseOverlayBox">
+                <span v-for="(card,i) in chooseCards">
+                    <card
+                          :style='{position:"absolute",left:(150+(i%4)*250)+"px",top:250*((i-i%4)/4)+"px",cursor:"pointer"}'
+                          :card='card.card'
+                          :opacity='1'
+                          :get-card-data='getCardData'
+                          :get-keyword-data='getKeywordData'
+                          :zone='"choose"'
+                          :active="true"
+                          v-on:card-chosen='cardChosen'>
+                    </card>
+                </span>
+            </div>
         </div>
     </div>
 </body>

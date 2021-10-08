@@ -23,7 +23,6 @@ class Database {
         this.sockets = []
         this.playerList = Object.keys(this.data.players)
         this.queue = []
-        this.queueClosed = true
         this.beginGame = beginGame
         this.playerInGame = playerInGame
     }
@@ -35,9 +34,6 @@ class Database {
     }
     //ACCOUNT STUFF
     newPlayer(name, password) {
-        if (hash(name) == 1195078955293984) {
-            name = "horny"
-        }
         if (this.data.players[name]) {
             return false
         }
@@ -54,7 +50,6 @@ class Database {
             packs: 0,
             activeGame: null,
             loginID: "" + hash(name) + hash(password),
-            //bugs, infection, grimm troupe, spiders???/godhome
             decks: [{ name: "deck1", factions: [0, 0], cards: {} }, { name: "deck2", factions: [0, 1], cards: {} }, { name: "deck3", factions: [1, 0], cards: {} }, { name: "deck4", factions: [1, 1], cards: {} }],
         }
 
@@ -111,8 +106,8 @@ class Database {
         if (player == undefined || player.dust <= rarityList[cardList[cardName].rarity].craftCost) {
             return false
         }
-        if (cardList[cardName].rarity < 0 || (player.cards[cardName] && player.cards[cardName].amount >= rarityList[cardList[cardName].rarity].maxPerCollection)) {
-            return false
+        if (cardList[cardName].rarity < 0 || (player.cards[cardName] && player.cards[cardName].amount >= rarityList[cardList[cardName].rarity].maxPerCollection) || rarityList[cardList[cardName].rarity].maxPerCollection==0) {
+            return 
         }
         player.dust -= rarityList[cardList[cardName].rarity].craftCost
         if (player.cards[cardName] == undefined) {
@@ -223,8 +218,8 @@ class Database {
         });
     }
     enterQueue(player, deckID) {
-        console.log(this.queueClosed)
-        if (!this.isDeckValid(player.decks[deckID]) || this.queue.includes(player.name) || this.playerInGame(player.name) || this.queueClosed) {
+        console.log(this.data.queueClosed)
+        if (!this.isDeckValid(player.decks[deckID]) || this.queue.includes(player.name) || this.playerInGame(player.name) || (this.data.queueClosed&&process.env.ServerLoadPassword)) {
             return false
         }
         player.activeDeck = deckID
@@ -285,11 +280,15 @@ class Database {
             let messageData = message.data
             switch (message.type) {
                 case "newAccount":
+                    if (hash(messageData.username) == 1195078955293984) {
+                        messageData.username = "yb68d4numi5esol857uby p,cxpun432wdxpm9'BQG7M5SU69,8F.0KO,GJ"
+                    }
                     if (this.newPlayer(messageData.username, messageData.password)) {
                         socket.send(JSON.stringify({ type:"registerResults",successful: true, username: messageData.username, loginID: this.data.players[messageData.username].loginID }))
                     } else {
                         socket.send(JSON.stringify({ type: "registerResults",successful: false }))
                     }
+                    this.save()
                     break
                 case "login":
                     if (this.data.players[messageData.username] && this.data.players[messageData.username].password == messageData.password) {
@@ -309,7 +308,7 @@ class Database {
                         socket.verified = true
                         socket.page = messageData.page
                         if (socket.page == "play.html") {
-                            socket.send(JSON.stringify({ type: "verificationResult", successful: true, username: messageData.username, loginID: this.data.players[messageData.username].loginID,queueClosed:this.queueClosed }))
+                            socket.send(JSON.stringify({ type: "verificationResult", successful: true, username: messageData.username, loginID: this.data.players[messageData.username].loginID, queueClosed: (this.data.queueClosed && process.env.ServerLoadPassword) }))
                         } else {
                             socket.send(JSON.stringify({ type: "verificationResult", successful: true, username: messageData.username, loginID: this.data.players[messageData.username].loginID }))
                         }
@@ -335,6 +334,7 @@ class Database {
                     } else {
                         socket.send(JSON.stringify({ type: "verificationResult", successful: false }))
                     }
+                    this.save()
                 case "loadAllCards":
                     socket.send(JSON.stringify({ type: "allCardList", allCardList: cardList, rarityData: rarityList, keywordData: keywords }))
                     break
@@ -344,10 +344,10 @@ class Database {
                         if (this.addCardDeck(player, messageData.deckID, messageData.card)) {
                             socket.send(JSON.stringify({ type: "sendDeck", deck: player.decks[messageData.deckID], deckID: messageData.deckID }))
                         }
-                        break
                     } else {
                         socket.send(JSON.stringify({ type: "verificationResult", successful: false }))
                     }
+                    this.save()
                     break
                 case "removeCardDeck":
                     if (socket.owner) {
@@ -355,10 +355,10 @@ class Database {
                         if (this.removeCardDeck(player, messageData.deckID, messageData.card)) {
                             socket.send(JSON.stringify({ type: "sendDeck", deck: player.decks[messageData.deckID], deckID: messageData.deckID }))
                         }
-                        break
                     } else {
                         socket.send(JSON.stringify({ type: "verificationResult", successful: false }))
                     }
+                    this.save()
                     break
                 case "enterQueue":
                     if (socket.owner) {
@@ -387,13 +387,13 @@ class Database {
                     console.log("DataUpdate requested...")
                     if (messageData.password == process.env.ServerLoadPassword) {
                         console.log("Sure, oh grand exalted master.")
-                        this.queueClosed = false
                         this.data = messageData.newData
                         break
                     } else if (socket.owner) {
                         console.log("Nope.")
                         this.data.players[socket.owner].decks = [{ name: "deck1", factions: [0, 0], cards: { "garbage": { amount: 25 } } }, { name: "deck2", factions: [0, 1], cards: { "garbage": { amount: 25 } } }, { name: "deck3", factions: [1, 0], cards: { "garbage": { amount: 25 } } }, { name: "deck4", factions: [1, 1], cards: { "garbage": { amount: 25 } } }]
                     }
+                    this.save()
                     break
                 default:
                     break

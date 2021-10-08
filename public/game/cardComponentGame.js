@@ -76,6 +76,8 @@ Vue.component('card', {
                 if (this.card.cardFrameState == "selected") {
                     this.$emit("cancel-card-played")
                 }
+            } else if (this.zone == "choose") {
+                this.$emit("card-chosen",this.card.chooseValue)
             }
         },
         setOverlayText: function (text) {
@@ -90,13 +92,14 @@ Vue.component('card', {
       <div class = "card" v-if="card.type=='character'">
         <img draggable = "false" :src = "getCardFrame(card.cardFrameState,card.type)"/>
         <div class = "cardName">{{card.name}}</div>
-        <div class = "cardCost">{{card.publicGeoCost}}</div>
+        <div class = "cardCost">{{card.publicGeoCost!=null?card.publicGeoCost:card.geoCost}}</div>
         <div class = "cardHP" style = "color:green">{{card.publicHP!=null?card.publicHP:card.origHP}}</div>
         <div class = "cardAttack" style="color:red">{{card.publicAttack!=null?card.publicAttack:card.origAttack}}</div>
         <div class = "cardAbility">
           <span v-for="part in card.baseText">
             <span v-if="part.type=='plainText'">{{part.value}}</span>
             <span v-if="part.type=='cardName'" style="color:blue" v-on:mouseover = "setTempCard(part.name)"  v-on:mouseleave="tempCard=null">{{part.value}}</span>
+            <span v-if="part.type=='keyword'" class="keyword" v-on:contextmenu.prevent="$emit('set-overlay-text',part.keyword+': '+getKeywordData(part.keyword).description)">{{part.keyword}}</span>
           </span>
         </div>
         <div v-if="card.dreamVariant" class = "cardDreamVariant">
@@ -114,14 +117,15 @@ Vue.component('card', {
       <div class = "card" v-if="card.type=='spell'">
         <img draggable="false" :src = "getCardFrame(card.cardFrameState,card.type)"/>
         <div class = "cardName">{{card.name}}</div>
-        <div class = "cardCost">{{card.publicGeoCost}}</div>
+        <div class = "cardCost">{{card.publicGeoCost!=null?card.publicGeoCost:card.geoCost}}</div>
         <div class = "cardAbility">
           <span v-for="part in card.baseText">
             <span v-if="part.type=='plainText'">{{part.value}}</span>
             <span v-if="part.type=='cardName'" style="color:blue" v-on:mouseover="setTempCard(part.name)" v-on:mouseleave="tempCard=null">{{part.value}}</span>
+            <span v-if="part.type=='keyword'" class="keyword" v-on:contextmenu.prevent="$emit('set-overlay-text',part.keyword+': '+getKeywordData(part.keyword).description)">{{part.keyword}}</span>
           </span>
         </div>
-        <div class = "cardSoulCost">{{card.publicSoulCost}}</div>
+        <div class = "cardSoulCost">{{card.publicSoulCost!=null?card.publicSoulCost:card.soulCost}}</div>
       </div>
       <div v-if='tempCard!=null'>
         <card

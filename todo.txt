@@ -9,3 +9,8 @@ Look into how to detect when a websocket closes.
 
 TODO immediate:
 Create a look at menu
+
+
+Bugs that are hard to replicate. If this happens to you, please tell me.
+Sometimes on the lookatmenu cardFrameState can bug out and become normal. This is fixed by reloading, but prevents you selecting it until you reload.
+There is a phantom space between some pieces of card space. Very consistent, no clue why.

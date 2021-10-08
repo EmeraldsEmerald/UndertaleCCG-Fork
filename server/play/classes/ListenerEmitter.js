@@ -160,14 +160,14 @@ listenerData = {
  *          An monster should trigger play effects now.
  *      Type:
  *          passiveEvent`,
-    triggerDieEffects: `
+    triggerDieEvents: `
  *      Emitter:
  *          Card emitter
  *      Trigger Condition:
  *          An monster should trigger die effects now.
  *      Type:
  *          passiveEvent`,
-    triggerGameStartEffects: `
+    triggerGameStartEvents: `
  *      Emitter:
  *          Card emitter
  *      Trigger Condition:

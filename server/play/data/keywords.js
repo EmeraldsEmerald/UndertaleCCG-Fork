@@ -1,4 +1,3 @@
-//DO NOT USE ARROW FUNCTIONS
 const keywords = {
     "Haste": {
         imgsrclink: '',
@@ -19,6 +18,10 @@ const keywords = {
     "Awakened Dream Variant": {
         imgsrclink: '',
         description: 'Certain cards have dream variants. To get the awakened dream variant of a card, use the dream nail on it.'
+    },
+    "Invoke": {
+        imgsrclink: '',
+        description: 'Create and Summon a character.'
     }
 }
 module.exports = { keywords }

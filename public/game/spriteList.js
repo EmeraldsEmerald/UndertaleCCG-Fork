@@ -12,3 +12,5 @@ const selectedSpellCardFrame = "images/SpellCardFrameSelected.png"
 const dyingSpellCardFrame = "images/SpellCardFrameDying.png"
 const targetableAvatarFrame = 'images/AvatarFrameTargetable.png'
 const targetedAvatarFrame = 'images/AvatarFrameTargeted.png'
+const cardFrameCollection = "images/CardFrameCollection.png"
+const spellCardFrameCollection = "images/SpellCardFrameCollection.png"
