@@ -5,7 +5,7 @@ class ListenerReceiver {
       this.eventHandlers = {}
     }
     addEventHandler(name, func, isProperEvent, emitter,skipStack=false) {
-        this.eventHandlers[name] = [new Listener(func, isProperEvent,skipStack),emitter]
+        this.eventHandlers[name] = [new Listener(func, isProperEvent,skipStack,name),emitter]
         emitter.registerListener(this.eventHandlers[name][0])
         return this.eventHandlers[name][0]
     }

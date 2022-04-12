@@ -8,21 +8,74 @@ class Game {
         this.players = [new Player(0, this, decks[0], names[0]), new Player(1, this, decks[1], names[1])]
         this.whosTurnNext = 1
         this.whosTurnCurrent = 0
+        this.turnNum = 0
         this.listenerEmitter = new ListenerEmitter(this)
         this.started = false
+        this._nextCardID = 0
         this.ended = false
         this.gameID = gameID
         this.deleteFunc = deleteFunc
         this.players[0].beginGame()
         this.players[1].beginGame()
         this.stackClosed = false
-       /* this.players[0].listenerReceiver.addEventHandler(
-            "gameLogEvent",
-            (data) => { console.log(data)},
-            (data) => { return true },
-            this.listenerEmitter
-        )*/
+        this.listenerReceiver = new ListenerReceiver()
+        this.listenerReceiver.addEventHandler(
+            "gameStoreEvent",
+            (event) => {
+                switch (event.name) {
+                    case "allyCardPlayed":
+                        this.history.push({ turn: this.turnNum, player: 0, card: event.data.card.getSendableCopy(), type: "cardPlayed" })
+                        break
+                    case "allyDied":
+                        this.history.push({ turn: this.turnNum, player: 0, card: event.data.card.getSendableCopy(), type: "cardDied" })
+                        break
+                    default:
+                        this.history.push({ turn: this.turnNum, player:0, event })
+                        break;
+                }
+            },
+            (data) => {
+                return [
+                    "allyCardPlayed",
+                    "allyDied"
+                ].includes(data.name)
+            },
+            this.players[0].listenerEmitter,
+            true
+        )
+        this.listenerReceiver.addEventHandler(
+            "gameStoreEvent",
+            (event) => {
+                switch (event.name) {
+                    case "allyCardPlayed":
+                        this.history.push({ turn: this.turnNum, player: 1, card: event.data.card.getSendableCopy(),type:"cardPlayed" })
+                        break
+                    case "allyDied":
+                        this.history.push({ turn: this.turnNum, player: 1, card: event.data.card.getSendableCopy(), type: "cardDied" })
+                        break
+                    default:
+                        this.history.push({ turn: this.turnNum, player: 1, event })
+                        break;
+                }
+            },
+            (data) => {
+                return [
+                    "allyCardPlayed",
+                    "allyDied"
+                ].includes(data.name)
+            },
+            this.players[1].listenerEmitter,
+            true
+        )
+        this.listenerReceiver.addEventHandler(
+            "gameStoreEvent",
+            (data) => { this.history.push({ turn: this.turnNum, event: data }) },
+            (data) => { return [].includes(data.name) },
+            this.listenerEmitter,
+            true
+        )
         this.listenerEmitter.emitPassiveEvent({}, "triggerGameStartEvents");
+        this.history = []
     }
     get stackClosed() {
         return this._stackClosed
@@ -37,6 +90,19 @@ class Game {
             }
             this.evalNextStackEntry()
         }
+    }
+    get nextCardID() {
+        this._nextCardID += 1
+        return this._nextCardID-1
+    }
+    parseHistory(validEvent) {
+        let events = []
+        for (let i = 0; i < this.history.length; i++) {
+            if (validEvent(this.history[i])) {
+                events.push(this.history[i])
+            }
+        }
+        return events
     }
     checkCardsForUpdates() {
         for (let i = 0; i < this.players.length; i++) {
@@ -67,6 +133,7 @@ class Game {
                 }
                 break
             }
+            socket.added = true
         }
         if (this.players[1].webSocket && this.players[0].webSocket && !this.started) {
             this.started = true
@@ -75,6 +142,7 @@ class Game {
             this.players[0].startTurn()
             this.sendAnimations()
         } else {
+            return
         }
     }
     checkActive(player) {
@@ -102,6 +170,7 @@ class Game {
         let save = this.whosTurnNext
         this.whosTurnNext = this.whosTurnCurrent
         this.whosTurnCurrent = save
+        this.turnNum+=1
     }
     win(team) {
         //Win code here
@@ -115,13 +184,15 @@ class Game {
         this.players[1].webSocket.close()
         this.deleteFunc(this.gameID)
     }
-    addToStack(func) {
+    addToStack(func,desc) {
         if (!this.stackClosed) {
+            console.log("Executing: "+desc)
             this.stackClosed = true
             if (!func()) {
                 this.stackClosed = false
             }
         } else {
+            console.log("Stack closed. Adding to stack. "+desc)
             this.effectStack.push(func)
         }
     }

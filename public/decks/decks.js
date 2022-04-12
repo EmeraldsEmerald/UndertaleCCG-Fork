@@ -113,9 +113,6 @@ let App = new Vue({
                 if (this.allCardList[this.collection[i][0]].factions[1] == +!this.decks[this.curDeckID].factions[1]) {
                     continue
                 }
-                if (!this.rarityData[this.allCardList[this.collection[i][0]].rarity].collectible) {
-                    continue;
-                }
                 relevantCol.push(this.collection[i])
             }
             return relevantCol

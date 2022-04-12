@@ -24,6 +24,9 @@
       <SubType>Code</SubType>
     </Content>
     <Content Include="rules.txt" />
+    <Content Include="server\play\data\consoleUtil.js">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="server\play\classes\Listener.js">
       <SubType>Code</SubType>
     </Content>
@@ -102,6 +105,7 @@
     <Folder Include="server\play" />
     <Folder Include="server\play\classes" />
     <Folder Include="server\play\data" />
+    <Folder Include="server\play\data\cards\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />

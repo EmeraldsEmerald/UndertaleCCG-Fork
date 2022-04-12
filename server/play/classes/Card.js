@@ -12,7 +12,9 @@ class Card {
         this.slot = null
         this.statsSwapped = false
         this.game = game
+        this.cardID = this.game.nextCardID
         this.damage = 0
+        console.log(name)
         this.loadData(cardList[name])
         //HP after damage
         //orig means the base stats of the card, cur means current stats before aurs, outgoing means after all auras, public means what the client sees.
@@ -30,6 +32,9 @@ class Card {
             this.hasAttacked = false
             this.ableToAttack = {}
             this.outgoingStatsSwapped = this.statsSwapped
+            if (this.canAct) {
+                this.acted = false
+            }
         }
         this._zone = "void"
         this.prevSoulCost = null
@@ -43,7 +48,7 @@ class Card {
         }
         this.zone = zone
         if (this.onCardCreation) {
-            this.game.addToStack(() => { this.onCardCreation() })
+            this.game.addToStack(() => { this.onCardCreation() },"OnCardCreated"+name)
         }
     }
     get zone() {
@@ -61,6 +66,7 @@ class Card {
         return this.game.players[+!this.team]
     }
     get isPlayable() {
+        if (this.zone != "hand") return false
         let playable = true
         if (this.player.geo < this.outgoingGeoCost || (this.player.soul < this.outgoingSoulCost && this.outgoingSoulCost != undefined)) {
             playable = false
@@ -79,6 +85,22 @@ class Card {
         }
         return playable
     }
+    get canAct() {
+        if (this.zone != "hand") return false
+        if (!this.hasAct) return false
+        if(this.acted) return false
+        let actable = true
+        if (this.player.geo < this.actCost) {
+            actable = false
+        }
+        actable = this.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardCanAct", actable)
+        actable = this.game.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardCanAct", actable)
+        //note that to prevent softlocks making a card unplayable if no targets comes after all modifyCardPlayables
+        if (this.player.noCharacters && this.enemyPlayer.noCharacters) {
+            return false
+        }
+        return actable
+    }
     get outgoingGeoCost() {
         let cost = this.geoCost
         cost = this.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardGeoCost", cost)
@@ -92,7 +114,7 @@ class Card {
         return cost
     }
     get outgoingBaseHP() {
-        let hp = this.origHP
+        let hp = this.curBaseHP
         hp = this.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardHP", hp)
         hp = this.game.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardHP", hp)
         return hp
@@ -101,7 +123,7 @@ class Card {
         return this.outgoingBaseHP - this.damage
     }
     get outgoingAttack() {
-        let attack = this.origAttack
+        let attack = this.curAttack
         attack = this.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardAttack", attack)
         attack = this.game.listenerEmitter.emitModifiableEvent({ card: this }, "modifyCardAttack", attack)
         return attack
@@ -113,7 +135,19 @@ class Card {
         keywords = util.stripDuplicates(keywords)
         return keywords
     }
-    //DUMMY FUNCTION. REMOVE WHEN CARDS ARE FINISHED.
+    applyBuff(buff) {
+        //yes, debuffs too.
+        if (buff.hp) {
+            this.curBaseHP += buff.hp
+        }
+        if (buff.attack) {
+            this.curAttack += buff.attack
+        }
+        if (buff.geoCost) {
+            this.geoCost += buff.geoCost
+        }
+        this.checkUpdates()
+    }
     performSetup() {
 
     }
@@ -176,21 +210,27 @@ class Card {
         }
         this.player.listenerEmitter.emitPassiveEvent({ monster: this, targetType: "player", target }, "allyAttacked")
     }
-    modifyDamage(source, amount) {
-        return amount
-    }
     takeDamage(source, amount) {
-        if (amount <= 0) {
-            return
-        }
         if (this.outgoingKeywords.includes('Armor')) {
             amount -= 1
         }
-        amount = this.modifyDamage(source, amount)
         if (amount < 0) {
             amount = 0
         }
         this.damage += amount
+        if (this.outgoingHP <= 0) {
+            this.killerCardID = source.cardID
+        }
+        this.checkUpdates()
+    }
+    heal(amount) {
+        if (amount <= 0) {
+            return
+        }
+        if (amount > this.damage) {
+            amount=this.damage
+        }
+        this.damage -= amount
         this.checkUpdates()
     }
     checkDeath() {
@@ -215,6 +255,25 @@ class Card {
                 !util.arrsEqual(this.prevKeywords, this.outgoingKeywords) ||
                 this.prevGeoCost != this.outgoingGeoCost
             ) {
+                console.log("Updated card " + this.name)
+                console.log("reason: ")
+                switch (true) {
+                    case this.outgoingHP != this.prevHP:
+                        console.log("HP changed")
+                    case this.outgoingAttack != this.prevAttack:
+                        if (!(this.outgoingAttack != this.prevAttack)) { break }
+                        console.log("Attack changed")
+                    case !util.arrsEqual(this.prevKeywords, this.outgoingKeywords):
+                        if (util.arrsEqual(this.prevKeywords, this.outgoingKeywords)) { break }
+                        console.log("Keywords changed changed")
+                    case this.prevGeoCost != this.outgoingGeoCost:
+                        if (!(this.prevGeoCost != this.outgoingGeoCost)) { break }
+                        console.log("cost changed")
+                        break
+                    default:
+                        console.log("I felt like it.")
+                        break
+                }
                 if (this.zone == "board") {
                     this.player.addAnimation("updateBoardCardData", { ally: true, slot: this.slot, value: this.getSendableCopy() })
                     this.enemyPlayer.addAnimation("updateBoardCardData", { ally: false, slot: this.slot, value: this.getSendableCopy() })
@@ -231,12 +290,15 @@ class Card {
             this.prevGeoCost = this.outgoingGeoCost
         }
     }
-    die() {
+    die(killer) {
+        if (killer && !this.killer) {
+            this.killerCardID = killer.cardID
+        }
         this.player.slots[this.slot] = null
         this.zone = "death"
         this.player.addDualAnimation("awaitDeath", { ally: true, slot: this.slot }, 300)
-        this.listenerEmitter.emitPassiveEvent({ monster: this }, "triggerDieEvents")
-        this.player.listenerEmitter.emitPassiveEvent({ monster: this }, "allyDied")
+        this.listenerEmitter.emitPassiveEvent({}, "triggerDieEvents")
+        this.player.listenerEmitter.emitPassiveEvent({card: this}, "allyDied")
     }
     turnStart() {
         this.summoningSick = false
@@ -306,6 +368,16 @@ class Card {
     // both
     getSendableCopy() {
         this.updateAttackable()
+        let curTextSave = this.baseText
+        let newText = []
+        for (let i = 0; i < this.baseText.length; i++) {
+            if (this.baseText[i].type != "evalText" ) {
+                newText.push(this.baseText[i])
+            } else {
+                newText.push(this.baseText[i].value(this))
+            }
+        }
+        this.baseText = newText
         let game = this.game
         this.publicGeoCost = this.outgoingGeoCost
         this.publicSoulCost = this.outgoingSoulCost
@@ -313,6 +385,7 @@ class Card {
             this.publicAttack = this.outgoingAttack
             this.publicHP = this.outgoingHP
             this.publicKeywords = this.outgoingKeywords
+            this.actable = this.canAct
         }
         let emitter = this.listenerEmitter
         let receiver = this.listenerReceiver
@@ -327,9 +400,11 @@ class Card {
             console.log(this)
             console.log(e)
         }
+        this.baseText = curTextSave
         this.game = game
         this.listenerEmitter = emitter
         this.listenerReceiver = receiver
+        this.actable = false
         this.isCardPlayable = null
         this.publicGeoCost = null
         this.publicSoulCost = null

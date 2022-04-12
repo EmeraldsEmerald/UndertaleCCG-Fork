@@ -1,3 +1,4 @@
+const cardList = require('../data/cards.js').cardList
 const Card = require('./Card.js').Card
 const ListenerReceiver = require('./ListenerReceiver.js').ListenerReceiver
 const ListenerEmitter = require('./ListenerEmitter.js').ListenerEmitter
@@ -26,7 +27,9 @@ class Player {
         this.hpMax = 30
         this.slots = [null, null, null, null, null, null, null]
         this.addAnimation("setID", { id: this.id }, 0)
-        this.waitingForTarget = false
+        this.state = "default"
+        this.chooseCards = []
+        this.debug = false
         this.listenerReceiver.addEventHandler(
             "PlayerIncreaseSoul",
             (data) => { this.soul += 1 },
@@ -76,6 +79,14 @@ class Player {
         }
         return false
     }
+    get noCharacters() {
+        for (let i = 0; i < 7; i++) {
+            if (this.slots[i] != null) {
+                return false
+            }
+        }
+        return true
+    }
     addEnemyAnimation(type, data, time) {
         if (!this.game.players) {
             return
@@ -99,10 +110,11 @@ class Player {
         this.webSocket.on('message', (message) => { this.handleSocketMessage(message) })
     }
     sendFullGamestate() {
+        this.addAnimation("setID", { id: this.id })
         for (let i = 0; i < this.enemyPlayer.slots.length; i++) {
             let slot = this.enemyPlayer.slots[i]
             if (slot !== null) {
-                this.addAnimation("enemySummonCharacter", { card: slot.getSendableCopy(), slot: i })
+                this.addAnimation("summonCharacter", { card: slot.getSendableCopy(), slot: i })
             }
         }
         for (let i = 0; i < this.slots.length; i++) {
@@ -125,13 +137,14 @@ class Player {
         this.addAnimation("updateEnemyHealth", { value: this.enemyPlayer.hp + "/" + this.enemyPlayer.hpMax })
         this.addAnimation("updateAllyName", { value: this.name })
         this.addAnimation("updateEnemyName", { value: this.enemyPlayer.name })
-        this.addAnimation("setID", { id: this.id })
-        if (this.waitingForTarget) {
+        if (this.state == "waitingForTarget") {
             if (this.onCancelChoose != null) {
                 this.addAnimation("getTargetCancellable", { validTargets: this.validTargets, card: this.targetDemandingCard.getSendableCopy() }, 0)
             } else {
                 this.addAnimation("getTargetNotCancellable", { validTargets: this.validTargets }, 0)
             }
+        } else if (this.state == "waitingForChoose") {
+            this.addAnimation("getChoose", { chooseCards: this.chooseCards }, 0)
         }
         if (this.game.whosTurnCurrent == this.id) {
             this.addAnimation("beginTurn", {})
@@ -144,27 +157,50 @@ class Player {
             this.beenPinged = true
             return
         }
+        if (message == 'debugToggle') {
+            this.debug = !this.debug
+        }
+        if (this.debug) {
+            console.log(message)
+        }
         if (!this.game.started) {
             return false
         }
         try {
             message = JSON.parse(message)
-            if (this.waitingForTarget) {
+            if (this.state == "waitingForChoose") {
+                if (message.type == "chosenCard") {
+                    if (message.chosen >= 0 && message.chosen < this.chooseCards.length) {
+                        let save = this.onChosenCard
+                        let save2 = this.chooseCards
+                        this.chooseCards = null
+                        this.state = "default"
+                        this.onChosenCard = null
+                        this.addAnimation("clearChooseCardSelection", {})
+                        save(message.chosen, save2)
+                        this.game.sendAnimations()
+                    }
+                }
+            } else if (this.state == "waitingForTarget") {
                 switch (message.type) {
                     case "targetChosen":
-                        let save = this.onTargetChosen
-                        this.waitingForTarget = false
-                        this.onCancelChoose = null
-                        this.onTargetChosen = null
-                        this.addAnimation("clearTargetSelection", {})
-                        save(this.parseTarget(message.target))
-                        this.game.sendAnimations()
+                        if (this.isValidTarget(this.validTargets, message.target)) {
+                            let save = this.onTargetChosen
+                            this.state = "default"
+                            this.onCancelChoose = null
+                            this.onTargetChosen = null
+                            this.validTargets = null
+                            this.addAnimation("clearTargetSelection", {})
+                            save(this.parseTarget(message.target))
+                            this.game.sendAnimations()
+                        }
                         break;
                     case "cancelChoose":
                         this.onCancelChoose()
-                        this.waitingForTarget = false
+                        this.state = "default"
                         this.onCancelChoose = null
                         this.onTargetChosen = null
+                        this.validTargets = null
                         this.addAnimation("clearTargetSelection", {})
                         this.game.sendAnimations()
                         break;
@@ -173,9 +209,6 @@ class Player {
                 }
             } else {
                 switch (message.type) {
-                    case "getHand":
-                        this.webSocket.send(JSON.stringify({ type: sendHand, hand: this.hand }))
-                        break;
                     case "endTurn":
                         if (this.game.whosTurnCurrent == this.id) {
                             this.game.nextTurn()
@@ -184,6 +217,11 @@ class Player {
                         break;
                     case "playCharacterCard":
                         this.playCharacter(message.position, message.slotNumber)
+                        this.game.sendAnimations()
+                        break;
+                    case "characterActs":
+                        console.log(message)
+                        this.characterActs(message.position, message.slotNumber,message.ally)
                         this.game.sendAnimations()
                         break;
                     case "playSpellCard":
@@ -224,6 +262,15 @@ class Player {
             return this.enemyPlayer.slots[target.pos]
         }
     }
+    isValidTarget(targetList, target) {
+        if (target.location == 'player') {
+            return target.player == this.id ? targetList.allyPlayer : targetList.enemyPlayer
+        } else if (target.location == 'allySlots') {
+            return targetList.allySlots.includes(target.pos)
+        } else if (target.location == 'enemySlots') {
+            return targetList.enemySlots.includes(target.pos)
+        }
+    }
     flipTargets(target) {
         let newTargets = { allySlots: target.enemySlots, enemySlots: target.allySlots, allyPlayer: target.enemyPlayer, enemyPlayer: target.allyPlayer, allyHand: target.enemyHand }
         return newTargets
@@ -252,6 +299,12 @@ class Player {
         for (let i = 0; i < this.hand.length; i++) {
             hand.push(this.hand[i].getSendableCopy())
         }
+        for (let i = 0; i < this.animationsToSend.length; i++) {
+            if (this.animationsToSend[i].type == "fake") {
+                this.animationsToSend = this.animationsToSend.slice(0, i).concat(this.animationsToSend.slice(i + 1))
+                i -= 1
+            }
+        }
         this.webSocket.send(
             JSON.stringify(
                 {
@@ -266,7 +319,7 @@ class Player {
         )
         this.animationsToSend = []
     }
-    addAnimation(type, data, time = 0,overrideUpdateCards = false) {
+    addAnimation(type, data, time = 0) {
         if (this.animationsLocked) {
             return
         }
@@ -301,24 +354,18 @@ class Player {
         } else {
             this.animationsToSend.push(animation)
         }
-        if (type != "updateBoardCardData"&&type!="updateHandCardData"&&this.game.started&&!overrideUpdateCards) {
-            this.game.checkCardsForUpdates()
-        }
     }
     addDualAnimation(type, data, time = 0) {
         this.addAnimation(type, data, time, true)
         let newData = {};
-        if (data.ally!=undefined) {
+        if (data.ally != undefined) {
             for (const [key, value] of Object.entries(data)) {
                 newData[key] = value
             }
             newData.ally = !data.ally
-            this.enemyPlayer.addAnimation(type, newData, time,true)
+            this.enemyPlayer.addAnimation(type, newData, time, true)
         } else {
-            this.enemyPlayer.addAnimation(type, data, time,true)
-        }
-        if (type != "updateBoardCardData" && type != "updateHandCardData" && this.game.started) {
-            this.game.checkCardsForUpdates()
+            this.enemyPlayer.addAnimation(type, data, time, true)
         }
     }
     startTurn() {
@@ -337,7 +384,7 @@ class Player {
     }
     endTurn() {
         this.addAnimation("endTurn", {}, 0)
-        this.listenerEmitter.emitPassiveEvent({},"triggerTurnEndEvents")
+        this.listenerEmitter.emitPassiveEvent({}, "triggerTurnEndEvents")
     }
     shuffleDeck() {
         util.shuffle(this.deck)
@@ -374,14 +421,14 @@ class Player {
         }
     }
     playCharacter(cardPos, slotPos) {
-        if (this.slots[slotPos] != null || slotPos >= 7 || cardPos >= this.hand.length) {
+        if (this.slots[slotPos] != null || slotPos >= 7 || cardPos >= this.hand.length || slotPos < 0) {
             return
         }
         let card = this.hand[cardPos]
         if (!card.isPlayable) {
             return;
         }
-        if (card.requiresTarget&&!util.targetsEmpty(card.getValidTargets())) {
+        if (card.requiresTarget && !util.targetsEmpty(card.getValidTargets())) {
             this.hand.splice(cardPos, 1)
             this.addAnimation("removeCardHand", { cardPos })
             this.addAnimation("updateAllyCards", { value: this.hand.length })
@@ -407,7 +454,32 @@ class Player {
             this.addEnemyAnimation("updateEnemyCards", { value: this.hand.length })
             this.summonCharacter(card, slotPos, true)
         }
-        this.listenerEmitter.emitPassiveEvent({ card: card },"allyCardPlayed")
+        this.listenerEmitter.emitPassiveEvent({ card: card }, "allyCardPlayed")
+    }
+    characterActs(cardPos, slotPos, ally) {
+        if ((this.slots[slotPos] == null && ally) || (this.enemyPlayer.slots[slotPos] == null && !ally) || slotPos >= 7 || cardPos >= this.hand.length||slotPos<=0) {
+            return
+        }
+        let card = this.hand[cardPos]
+        let target = ally?this.slots[slotPos]:this.enemyPlayer.slots[slotPos]
+        if (!card.canAct) {
+            return;
+        }
+        this.geo -= card.actCost
+        this.addAnimation("showTargeted", { targets: this.calcActTargets(target)}, 0)
+        this.addEnemyAnimation("showTargeted", { targets: this.flipTargets(this.calcActTargets(target)) }, 0)
+        this.addAnimation("triggerEffect", { card: card.getSendableCopy() }, 700)
+        this.addEnemyAnimation("triggerEffect", { card: card.getSendableCopy() }, 700)
+        card.listenerEmitter.emitPassiveEvent({ target }, "triggerActEvents");
+        card.acted = true
+        this.listenerEmitter.emitPassiveEvent({ card: card }, "allyCardActed")
+    }
+    calcActTargets(target) {
+        return {
+            allyPlayer: false, enemyPlayer: false,
+            allySlots: target.team == this.id ? [target.slot] : [],
+            enemySlots: target.team != this.id ? [target.slot] : [],
+        }
     }
     playSpell(cardPos) {
         if (cardPos >= this.hand.length) {
@@ -423,7 +495,7 @@ class Player {
             this.addAnimation("updateAllyCards", { value: this.hand.length })
             this.waitForTargetCancellable(
                 card,
-                 (target) => {
+                (target) => {
                     this.geo -= card.outgoingGeoCost
                     this.soul -= card.outgoingSoulCost
                     this.addAnimation("updateAllyCards", { value: this.hand.length })
@@ -497,24 +569,43 @@ class Player {
         this.addAnimation("addCardHand", { card: card.getSendableCopy() }, 100)
         this.addAnimation("updateAllyCards", { value: this.hand.length }, 0)
         this.addEnemyAnimation("updateEnemyCards", { value: this.hand.length }, 0)
+        return card
+    }
+    //Invoke - Conjure and Summon
+    invokeCharacter(cardName) {
+        if (!this.hasEmptySlot)
+            return
+        if (cardList[cardName].type != "character")
+            return
+        let card = new Card(cardName, this.id, this.game, "void")
+        this.summonCharacter(card)
+        return card
     }
     waitForTargetCancellable(card, onTargetChosen, onCancelChoose) {
-        let validTargets = card.getValidTargets()
-        this.game.listenerEmitter.emitModifiableEvent({ card }, "cardModifyValidTargets", validTargets)
-        this.addAnimation("getTargetCancellable", { validTargets: validTargets, card: card.getSendableCopy() }, 0)
-        this.waitingForTarget = true
-        this.onTargetChosen = onTargetChosen
+        this.validTargets = card.getValidTargets()
+        this.game.listenerEmitter.emitModifiableEvent({ card }, "cardModifyValidTargets", this.validTargets)
+        this.addAnimation("getTargetCancellable", { validTargets: this.validTargets, card: card.getSendableCopy() }, 0)
+        this.state = "waitingForTarget"
         this.onCancelChoose = onCancelChoose
+        this.onTargetChosen = onTargetChosen
+        this.targetDemandingCard = card
     }
     waitForTargetNotCancellable(getValidTargets, onTargetChosen) {
-        let validTargets = getValidTargets()
-        if (util.targetsEmpty(validTargets)) {
+        this.validTargets = getValidTargets()
+        if (util.targetsEmpty(this.validTargets)) {
             return
         }
-        this.game.listenerEmitter.emitModifiableEvent({}, "modifyValidTargets", validTargets)
-        this.addAnimation("getTargetNotCancellable", { validTargets: validTargets }, 0)
-        this.waitingForTarget = true
+        this.game.listenerEmitter.emitModifiableEvent({}, "modifyValidTargets", this.validTargets)
+        this.addAnimation("getTargetNotCancellable", { validTargets: this.validTargets }, 0)
+        this.state = "waitingForTarget"
         this.onTargetChosen = onTargetChosen
+    }
+    waitForChoose(chooseCards, onChosenCard) {
+        this.chooseCards = chooseCards
+        this.addAnimation("getChoose", { chooseCards: this.chooseCards }, 0)
+        this.state = "waitingForChoose"
+        this.onChosenCard = onChosenCard
     }
 }
 module.exports = { Player }
+//NOTES: Playing a card that requires a target appears to not close the stack. Where is it being closed in the first place?

@@ -165,7 +165,7 @@
             <div class="chooseOverlayBox">
                 <span v-for="(card,i) in chooseCards">
                     <card
-                          :style='{position:"absolute",left:(150+(i%4)*250)+"px",top:250*((i-i%4)/4)+"px",cursor:"pointer"}'
+                          :style='{position:"absolute",left:(150+(i%4)*150)+"px",top:250*((i-i%4)/4)+"px",cursor:"pointer"}'
                           :card='card.card'
                           :opacity='1'
                           :get-card-data='getCardData'

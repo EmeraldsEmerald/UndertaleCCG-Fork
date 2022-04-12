@@ -98,6 +98,7 @@ Vue.component('card', {
         <div class = "cardAbility">
           <span v-for="part in card.baseText">
             <span v-if="part.type=='plainText'">{{part.value}}</span>
+            <span v-if="part.type=='evalText'">{{part.defaultValue}}</span>
             <span v-if="part.type=='cardName'" style="color:blue" v-on:mouseover = "setTempCard(part.name)"  v-on:mouseleave="tempCard=null">{{part.value}}</span>
             <span v-if="part.type=='keyword'" class="keyword" v-on:contextmenu.prevent="$emit('set-overlay-text',part.keyword+': '+getKeywordData(part.keyword).description)">{{part.keyword}}</span>
           </span>
@@ -121,6 +122,7 @@ Vue.component('card', {
         <div class = "cardAbility">
           <span v-for="part in card.baseText">
             <span v-if="part.type=='plainText'">{{part.value}}</span>
+            <span v-if="part.type=='evalText'">{{part.defaultValue}}</span>
             <span v-if="part.type=='cardName'" style="color:blue" v-on:mouseover="setTempCard(part.name)" v-on:mouseleave="tempCard=null">{{part.value}}</span>
             <span v-if="part.type=='keyword'" class="keyword" v-on:contextmenu.prevent="$emit('set-overlay-text',part.keyword+': '+getKeywordData(part.keyword).description)">{{part.keyword}}</span>
           </span>

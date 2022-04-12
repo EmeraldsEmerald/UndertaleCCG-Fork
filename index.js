@@ -3,8 +3,9 @@ const hbs = require('hbs')
 const Game = require('./server/play/classes/Game.js').Game
 const tests = require('./server/runtests.js')
 const db = require('./server/accounts/databaseInteraction.js')
-const util = require('./server/util.js')
 const cardList = require('./server/play/data/cards.js').cardList
+module.exports = { cardList }
+const util = require('./server/util.js')
 const rarityList = require('./server/play/data/rarity.js').rarityList
 const keywords = require('./server/play/data/keywords.js').keywords
 const bodyParser = require("body-parser");
@@ -82,7 +83,7 @@ const playerInGame = function (playerName) {
     return false
 }
 //handle requests
-const Database = new db.Database(beginGame, playerInGame)
+const Database = new db.Database(beginGame, playerInGame,cardList)
 tests.runDBTests(Database)
 //gameplay - 3000
 //accountstuff - 3001

@@ -121,7 +121,7 @@ const App = new Vue({
 			return style
 		},
 		getCardData: function (cardName) {
-			return this.allCardList[cardName]
+			return JSON.parse(JSON.stringify(this.allCardList[cardName]))
 		},
 		getKeywordData: function (keywordName) {
 			return this.keywordData[keywordName]
@@ -151,9 +151,20 @@ const App = new Vue({
 				if (releasedY > 261 + 67.83 & releasedY < 461 + 67.83) {
 					let slotNumber = Math.floor((releasedX - 50) / (1324.53 / 7))
 					if (slotNumber >= 0 && slotNumber < 7) {
-						sendThroughWebSocket(JSON.stringify({ type: 'playCharacterCard', slotNumber, position: this.heldCard }))
+						if (this.allySlots[slotNumber] == null) {
+							sendThroughWebSocket(JSON.stringify({ type: 'playCharacterCard', slotNumber, position: this.heldCard }))
+						} else {
+							sendThroughWebSocket(JSON.stringify({ type: 'characterActs', slotNumber, position: this.heldCard,ally:true }))
+						}
 					}
-				}
+				} else if (releasedY > 61 + 67.83 & releasedY < 261 + 67.83) {
+					let slotNumber = Math.floor((releasedX - 50) / (1324.53 / 7))
+					if (slotNumber >= 0 && slotNumber < 7) {
+						if (this.allySlots[slotNumber] != null) {
+							sendThroughWebSocket(JSON.stringify({ type: 'characterActs', slotNumber, position: this.heldCard,ally:false }))
+						}
+					}
+                }
 			} else if (this.hand[this.heldCard].type == 'spell') {
 				if (releasedX > 50 && releasedX < 50 + 1324.53 && releasedY > 61 + 67.83 & releasedY < 461 + 67.83) {
 					console.log("PlayingCard")
@@ -192,7 +203,7 @@ const App = new Vue({
 					}
 				}
 				for (let i = 0; i < this.hand.length; i++) {
-					if (this.hand[i].isCardPlayable) {
+					if (this.hand[i].isCardPlayable||this.hand[i].actable) {
 						this.hand[i].cardFrameState = 'highlighted'
 					}
 				}

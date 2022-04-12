@@ -47,7 +47,10 @@ I'm going to tentatively go with 3.
 
 
 For purposes of emitting events when listeners are added / removed, listener.isValidEvent should only depend on the name.
- **/
+History system:
+Attatch listeners to both players and the game to look for certain events. When such an event is discovered, parse it and add to history.
+Find things in history with a filter.
+  **/
 const Listener = require('./Listener.js').Listener
 /*Event format:
  * Data for the event is stored in eventData.data
@@ -71,8 +74,11 @@ class ListenerEmitter {
             eventType: 0
         }
         for (let i = 0; i < this.listeners.length; i++) {
+            if (!this.listeners[i].isProperEvent(data)) {
+                continue
+            }
             if (!this.listeners[i].skipStack) {
-                this.game.addToStack(() => { return this.listeners[i].handleEvent(data) })
+                this.game.addToStack(() => { return this.listeners[i].handleEvent(data) },this.listeners[i].name)
             } else {
                 this.listeners[i].handleEvent(data)
             }
@@ -90,6 +96,9 @@ class ListenerEmitter {
             eventType: 1
         }
         for (let i = 0; i < this.listeners.length; i++) {
+            if (!this.listeners[i].isProperEvent(data)) {
+                continue
+            }
             result = this.listeners[i].handleEvent(data)
             if (result != null) {
                 data.push(null)
@@ -109,6 +118,9 @@ class ListenerEmitter {
             modifiable
         }
         for (let i = 0; i < this.listeners.length; i++) {
+            if (!this.listeners[i].isProperEvent(data)) {
+                continue
+            }
             let result = this.listeners[i].handleEvent(data)
             if (result != null) {
                 data.modifiable = result

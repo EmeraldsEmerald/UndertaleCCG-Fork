@@ -2,7 +2,7 @@ const util = require('../util.js')
 const fs = require('fs')
 const cardList = require('../play/data/cards.js').cardList
 const rarityList = require('../play/data/rarity.js').rarityList
-const keywords = require('../play/data/keywords.js').keywords
+const keywords = require('../play/data/keywords.js')
 const retrieve = () => {
     return JSON.parse(fs.readFileSync(`./data.json`))
 }

@@ -1,14 +1,12 @@
 class Listener {
-    constructor(func,isProperEvent,skipStack) {
+    constructor(func,isProperEvent,skipStack,name) {
         //Handlers must be named.
         this.func = func
         this.isProperEvent = isProperEvent
         this.skipStack = skipStack
+        this.name=name
     }
     handleEvent(eventData) {
-        if (!this.isProperEvent(eventData)) {
-            return null;
-        }
         return this.func(eventData)
     }
 }
