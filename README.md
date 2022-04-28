@@ -1,5 +1,5 @@
 # Hollow-Cards
-Git repository for the web game *"Hollow Cards"*, by **eagleclaw**.
+Git repository not for the web game *"Hollow Cards"*, by **eagleclaw**.
 
 # About Me
 I'm a random guy who is making a card game inspired from Undercards not about the most popular and favourite series, Henry Stickmin. We are a team of (currently) 1 people: Eagleclaw.
